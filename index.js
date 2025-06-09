@@ -1,126 +1,225 @@
+const express = require('express');
+const bodyParser = require('body-parser');
+const path = require('path');
+const mongoose = require('mongoose');
 const axios = require('axios');
 const cheerio = require('cheerio');
+const fs = require('fs-extra');
+const archiver = require('archiver');
+require('dotenv').config();
 
-class WebCrawler {
-    constructor(options = {}) {
-        this.visitedUrls = new Set();
-        this.maxDepth = options.maxDepth || 2;
-        this.maxPages = options.maxPages || 100;
-        this.delay = options.delay || 1000; 
-        this.baseUrl = options.baseUrl || '';
-        this.results = [];
-    }
+const app = express();
+const port = process.env.PORT || 3002;
 
-    normalizeUrl(url) {
-        try {
-            if (!url.startsWith('http')) {
-                if (url.startsWith('/')) {
-                    return new URL(url, this.baseUrl).href;
-                }
-                return new URL(`/${url}`, this.baseUrl).href;
+// Middleware de logging des requêtes
+app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    next();
+});
+
+// Middleware de gestion des erreurs
+app.use((err, req, res, next) => {
+    console.error('Erreur:', err);
+    res.status(500).json({ error: err.message });
+});
+
+// Middleware
+app.use(bodyParser.json());
+app.use(express.static(path.join(__dirname, 'public')));
+app.use('/downloads', express.static(path.join(__dirname, 'downloads')));
+
+// Log pour vérifier le chemin des fichiers statiques
+console.log('Chemin du dossier public:', path.join(__dirname, 'public'));
+console.log('Contenu du dossier public:', fs.readdirSync(path.join(__dirname, 'public')));
+
+// Middleware de vérification des fichiers statiques
+app.use((req, res, next) => {
+    if (req.path === '/' || req.path.startsWith('/public/')) {
+        const filePath = path.join(__dirname, 'public', req.path === '/' ? 'index.html' : req.path);
+        console.log('Tentative d\'accès au fichier:', filePath);
+        fs.access(filePath, fs.constants.F_OK, (err) => {
+            if (err) {
+                console.error('Fichier non trouvé:', filePath);
+                next(err);
+            } else {
+                next();
             }
-            return url;
-        } catch (error) {
-            console.error(`Error normalizing URL ${url}:`, error.message);
-            return null;
-        }
+        });
+    } else {
+        next();
     }
+});
 
-    isValidUrl(url) {
-        try {
-            const urlObj = new URL(url);
-            const baseUrlObj = new URL(this.baseUrl);
-            return urlObj.hostname === baseUrlObj.hostname;
-        } catch {
-            return false;
-        }
-    }
+// Connexion à MongoDB
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/crawler', {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+}).then(() => {
+    console.log('Connecté à MongoDB');
+}).catch(err => {
+    console.error('Erreur de connexion MongoDB:', err);
+});
 
-    async sleep(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
+// Modèle de Page
+const Page = mongoose.model('Page', new mongoose.Schema({
+    url: String,
+    title: String,
+    description: String,
+    h1: String,
+    links: [String],
+    content: String,
+    zipFile: String,
+    crawledAt: { type: Date, default: Date.now }
+}));
 
-    extractData($, url) {
-        const title = $('title').text().trim();
-        const description = $('meta[name="description"]').attr('content') || '';
-        const h1 = $('h1').first().text().trim();
-        const links = $('a')
-            .map((i, el) => $(el).attr('href'))
-            .get()
-            .filter(href => href && !href.startsWith('#'));
+// Fonction de crawling
+async function crawlUrl(url, downloadDir) {
+    try {
+        console.log(`Traitement de l'URL: ${url}`);
+        const response = await axios.get(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+        });
 
-        return {
+        const $ = cheerio.load(response.data);
+        const data = {
             url,
-            title,
-            description,
-            h1,
-            links
+            title: $('title').text(),
+            description: $('meta[name="description"]').attr('content'),
+            h1: $('h1').first().text(),
+            links: $('a').map((i, el) => $(el).attr('href')).get(),
+            content: response.data
         };
-    }
 
-    async crawlUrl(url, depth = 0) {
-        if (depth > this.maxDepth || this.visitedUrls.size >= this.maxPages) {
-            return;
-        }
+        // Sauvegarder le contenu
+        const fileName = `${Date.now()}-${url.replace(/[^a-z0-9]/gi, '_')}.html`;
+        const filePath = path.join(downloadDir, fileName);
+        await fs.ensureDir(downloadDir);
+        await fs.writeFile(filePath, response.data);
 
-        const normalizedUrl = this.normalizeUrl(url);
-        if (!normalizedUrl || this.visitedUrls.has(normalizedUrl) || !this.isValidUrl(normalizedUrl)) {
-            return;
-        }
+        // Créer le ZIP
+        const zipPath = path.join(downloadDir, `${fileName}.zip`);
+        const output = fs.createWriteStream(zipPath);
+        const archive = archiver('zip');
+        output.on('close', () => {
+            console.log(`Archive créée: ${zipPath}`);
+        });
+        archive.pipe(output);
+        archive.file(filePath, { name: fileName });
+        await archive.finalize();
 
-        this.visitedUrls.add(normalizedUrl);
-        console.log(`Crawling: ${normalizedUrl} (depth: ${depth})`);
-
-        try {
-            await this.sleep(this.delay);
-            const response = await axios.get(normalizedUrl);
-            const $ = cheerio.load(response.data);
-            
-            const pageData = this.extractData($, normalizedUrl);
-            this.results.push(pageData);
-
-            for (const link of pageData.links) {
-                const nextUrl = this.normalizeUrl(link);
-                if (nextUrl && !this.visitedUrls.has(nextUrl)) {
-                    await this.crawlUrl(nextUrl, depth + 1);
-                }
-            }
-        } catch (error) {
-            console.error(`Error crawling ${normalizedUrl}:`, error.message);
-        }
-    }
-
-    async start(url) {
-        this.baseUrl = url;
-        this.visitedUrls.clear();
-        this.results = [];
-        
-        console.log(`Starting crawler for: ${url}`);
-        console.log(`Max depth: ${this.maxDepth}`);
-        console.log(`Max pages: ${this.maxPages}`);
-        
-        await this.crawlUrl(url);
-        
-        console.log('\nCrawling completed!');
-        console.log(`Pages crawled: ${this.visitedUrls.size}`);
-        
-        return this.results;
+        return { ...data, archiveName: `${fileName}.zip` };
+    } catch (error) {
+        console.error(`Erreur lors du traitement de ${url}:`, error);
+        throw error;
     }
 }
 
-const crawler = new WebCrawler({
-    maxDepth: 2,
-    maxPages: 50,
-    delay: 1000
+// Route pour le crawling
+app.post('/crawl', async (req, res) => {
+    try {
+        const { url } = req.body;
+        if (!url) {
+            return res.status(400).json({ error: 'URL is required' });
+        }
+
+        // Vérifier si l'URL a déjà été traitée
+        const existingPage = await Page.findOne({ url });
+        if (existingPage) {
+            return res.status(400).json({ 
+                error: 'URL already processed', 
+                processedAt: existingPage.crawledAt 
+            });
+        }
+
+        // Dossier de téléchargement
+        const downloadDir = path.join(__dirname, 'downloads');
+        
+        // Lancer le crawl
+        const crawlResult = await crawlUrl(url, downloadDir);
+        
+        // Sauvegarder dans MongoDB
+        const page = new Page({
+            url,
+            title: crawlResult.title,
+            description: crawlResult.description,
+            h1: crawlResult.h1,
+            links: crawlResult.links,
+            content: crawlResult.content,
+            zipFile: crawlResult.archiveName
+        });
+        await page.save();
+
+        res.json({ 
+            message: `Crawling terminé pour ${url}`,
+            data: {
+                url: page.url,
+                title: page.title,
+                description: page.description,
+                h1: page.h1,
+                links: page.links,
+                crawledAt: page.crawledAt,
+                archiveUrl: page.zipFile
+            }
+        });
+    } catch (error) {
+        console.error('Erreur lors du crawling:', error);
+        res.status(500).json({ error: error.message || 'Internal server error' });
+    }
 });
 
-const targetUrl = 'https://nodejs.org/en';
+// Route pour obtenir l'historique des pages
+app.get('/pages', async (req, res) => {
+    try {
+        const pages = await Page.find()
+            .sort({ crawledAt: -1 })
+            .limit(100);
+        res.json(pages);
+    } catch (error) {
+        console.error('Erreur lors de la récupération des pages:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
 
-crawler.start(targetUrl)
-    .then(results => {
-        console.log('\nResults:');
-        console.log(JSON.stringify(results, null, 2));
-    })
-    .catch(error => {
-        console.error('Error:', error);
-    }); 
+// Route pour télécharger un fichier
+app.get('/download/:filename', (req, res) => {
+    const filename = req.params.filename;
+    const filePath = path.join(__dirname, 'downloads', filename);
+    res.download(filePath, (err) => {
+        if (err) {
+            console.error('Erreur lors du téléchargement:', err);
+            res.status(404).json({ error: 'Fichier non trouvé' });
+        }
+    });
+});
+
+// Route pour la page d'accueil
+app.get('/', (req, res) => {
+    console.log('Accès à la page d\'accueil');
+    const indexPath = path.join(__dirname, 'public', 'index.html');
+    console.log('Chemin du fichier index:', indexPath);
+    res.sendFile(indexPath, (err) => {
+        if (err) {
+            console.error('Erreur lors de l\'envoi du fichier index:', err);
+            res.status(500).send('Erreur lors du chargement de la page');
+        }
+    });
+});
+
+// Démarrage du serveur
+const server = app.listen(port, '0.0.0.0', () => {
+    console.log(`Serveur démarré sur http://0.0.0.0:${port}`);
+    console.log('Dossier public:', path.join(__dirname, 'public'));
+    console.log('Dossier downloads:', path.join(__dirname, 'downloads'));
+});
+
+// Gestion des erreurs du serveur
+server.on('error', (error) => {
+    console.error('Erreur du serveur:', error);
+});
+
+// Gestion des connexions
+server.on('connection', (socket) => {
+    console.log('Nouvelle connexion:', socket.remoteAddress);
+}); 

@@ -1,0 +1,185 @@
+body {
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    margin: 0;
+    padding: 20px;
+    background-color: #f5f5f5;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 30px;
+}
+
+.input-group {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+#url-input {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+#start-crawl {
+    padding: 10px 20px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s;
+}
+
+#start-crawl:hover {
+    background-color: #45a049;
+}
+
+.status-container {
+    margin-top: 30px;
+}
+
+.status-container h2 {
+    color: #333;
+    margin-bottom: 15px;
+}
+
+.status-messages {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 10px;
+    background-color: #f9f9f9;
+}
+
+.status-message {
+    padding: 8px;
+    margin-bottom: 8px;
+    border-radius: 4px;
+    font-size: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.status-message.info {
+    background-color: #e3f2fd;
+    color: #0d47a1;
+}
+
+.status-message.success {
+    background-color: #e8f5e9;
+    color: #1b5e20;
+}
+
+.status-message.error {
+    background-color: #ffebee;
+    color: #b71c1c;
+}
+
+.status-message .download-button {
+    background-color: #2196F3;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    text-decoration: none;
+    font-size: 12px;
+    margin-left: 10px;
+    transition: background-color 0.3s;
+}
+
+.status-message .download-button:hover {
+    background-color: #1976D2;
+}
+
+.navigation {
+    margin-top: 20px;
+    text-align: center;
+}
+
+.button {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: #2196F3;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+}
+
+.button:hover {
+    background-color: #1976D2;
+}
+
+.history-container {
+    margin-top: 20px;
+}
+
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.history-item {
+    background-color: white;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.history-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.history-item h3 {
+    margin: 0 0 10px 0;
+    color: #333;
+    font-size: 18px;
+}
+
+.history-item p {
+    margin: 5px 0;
+    color: #666;
+    font-size: 14px;
+}
+
+.history-item a {
+    color: #2196F3;
+    text-decoration: none;
+}
+
+.history-item a:hover {
+    text-decoration: underline;
+}
+
+.history-item .download-button {
+    display: inline-block;
+    margin-top: 10px;
+}
+
+.error {
+    background-color: #ffebee;
+    color: #b71c1c;
+    padding: 10px;
+    border-radius: 4px;
+    margin: 10px 0;
+} 

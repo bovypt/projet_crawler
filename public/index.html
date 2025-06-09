@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crawler Web</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        input[type="url"] {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .status-container {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .status-messages {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+        .navigation {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #28a745;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+        .button:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Crawler Web</h1>
+        
+        <div class="input-group">
+            <input type="url" id="url-input" placeholder="Entrez l'URL à crawler" required>
+            <button id="start-crawl">Démarrer le crawling</button>
+        </div>
+
+        <div class="status-container">
+            <h2>Statut du crawling</h2>
+            <div id="crawl-status" class="status-messages"></div>
+        </div>
+
+        <div class="navigation">
+            <a href="/history.html" class="button">Voir l'historique</a>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('start-crawl').addEventListener('click', async () => {
+            const urlInput = document.getElementById('url-input');
+            const statusDiv = document.getElementById('crawl-status');
+            const url = urlInput.value;
+
+            if (!url) {
+                statusDiv.textContent = 'Veuillez entrer une URL valide';
+                return;
+            }
+
+            try {
+                statusDiv.textContent = 'Crawling en cours...';
+                const response = await fetch('/crawl', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ url })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    statusDiv.textContent = `Crawling terminé pour ${url}`;
+                    if (data.data && data.data.archiveUrl) {
+                        statusDiv.innerHTML += `<br><a href="/download/${data.data.archiveUrl}">Télécharger le fichier ZIP</a>`;
+                    }
+                } else {
+                    statusDiv.textContent = `Erreur: ${data.error}`;
+                }
+            } catch (error) {
+                statusDiv.textContent = `Erreur: ${error.message}`;
+            }
+        });
+    </script>
+</body>
+</html> 
