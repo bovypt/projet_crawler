@@ -1,7 +1,6 @@
-// Connexion WebSocket
+
 const socket = io();
 
-// Éléments du DOM
 const statusContainer = document.getElementById('crawl-status');
 const urlInput = document.getElementById('url-input');
 const startButton = document.getElementById('start-crawl');
@@ -12,7 +11,6 @@ console.log('Status Container:', statusContainer);
 console.log('URL Input:', urlInput);
 console.log('Start Button:', startButton);
 
-// Fonction pour ajouter un message de statut
 function addStatusMessage(message, type = 'info', archiveUrl = null) {
     console.log('Ajout message:', message, 'type:', type);
     updateDebugInfo('event', `${type}: ${message}`);
@@ -24,7 +22,6 @@ function addStatusMessage(message, type = 'info', archiveUrl = null) {
     messageContent.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
     messageElement.appendChild(messageContent);
 
-    // Ajouter un bouton de téléchargement si une archive est disponible
     if (archiveUrl) {
         const downloadButton = document.createElement('a');
         downloadButton.href = archiveUrl;
@@ -37,7 +34,6 @@ function addStatusMessage(message, type = 'info', archiveUrl = null) {
     statusContainer.insertBefore(messageElement, statusContainer.firstChild);
 }
 
-// Écouteur d'événements pour le bouton de démarrage
 startButton.addEventListener('click', async () => {
     console.log('Bouton cliqué');
     const url = urlInput.value.trim();
@@ -83,7 +79,6 @@ startButton.addEventListener('click', async () => {
     }
 });
 
-// Écouteurs d'événements WebSocket
 socket.on('connect', () => {
     console.log('Socket connecté');
     updateDebugInfo('socket', 'Connecté');

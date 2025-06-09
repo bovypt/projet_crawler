@@ -11,28 +11,23 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 3002;
 
-// Middleware de logging des requêtes
 app.use((req, res, next) => {
     console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
     next();
 });
 
-// Middleware de gestion des erreurs
 app.use((err, req, res, next) => {
     console.error('Erreur:', err);
     res.status(500).json({ error: err.message });
 });
 
-// Middleware
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/downloads', express.static(path.join(__dirname, 'downloads')));
 
-// Log pour vérifier le chemin des fichiers statiques
 console.log('Chemin du dossier public:', path.join(__dirname, 'public'));
 console.log('Contenu du dossier public:', fs.readdirSync(path.join(__dirname, 'public')));
 
-// Middleware de vérification des fichiers statiques
 app.use((req, res, next) => {
     if (req.path === '/' || req.path.startsWith('/public/')) {
         const filePath = path.join(__dirname, 'public', req.path === '/' ? 'index.html' : req.path);
@@ -50,7 +45,6 @@ app.use((req, res, next) => {
     }
 });
 
-// Connexion à MongoDB
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/crawler', {
     useNewUrlParser: true,
     useUnifiedTopology: true
@@ -60,7 +54,6 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/crawler',
     console.error('Erreur de connexion MongoDB:', err);
 });
 
-// Modèle de Page
 const Page = mongoose.model('Page', new mongoose.Schema({
     url: String,
     title: String,
@@ -72,7 +65,6 @@ const Page = mongoose.model('Page', new mongoose.Schema({
     crawledAt: { type: Date, default: Date.now }
 }));
 
-// Fonction de crawling
 async function crawlUrl(url, downloadDir) {
     try {
         console.log(`Traitement de l'URL: ${url}`);
@@ -92,13 +84,11 @@ async function crawlUrl(url, downloadDir) {
             content: response.data
         };
 
-        // Sauvegarder le contenu
         const fileName = `${Date.now()}-${url.replace(/[^a-z0-9]/gi, '_')}.html`;
         const filePath = path.join(downloadDir, fileName);
         await fs.ensureDir(downloadDir);
         await fs.writeFile(filePath, response.data);
 
-        // Créer le ZIP
         const zipPath = path.join(downloadDir, `${fileName}.zip`);
         const output = fs.createWriteStream(zipPath);
         const archive = archiver('zip');
@@ -116,7 +106,6 @@ async function crawlUrl(url, downloadDir) {
     }
 }
 
-// Route pour le crawling
 app.post('/crawl', async (req, res) => {
     try {
         const { url } = req.body;
@@ -124,7 +113,6 @@ app.post('/crawl', async (req, res) => {
             return res.status(400).json({ error: 'URL is required' });
         }
 
-        // Vérifier si l'URL a déjà été traitée
         const existingPage = await Page.findOne({ url });
         if (existingPage) {
             return res.status(400).json({ 
@@ -133,13 +121,9 @@ app.post('/crawl', async (req, res) => {
             });
         }
 
-        // Dossier de téléchargement
         const downloadDir = path.join(__dirname, 'downloads');
-        
-        // Lancer le crawl
         const crawlResult = await crawlUrl(url, downloadDir);
         
-        // Sauvegarder dans MongoDB
         const page = new Page({
             url,
             title: crawlResult.title,
@@ -169,7 +153,6 @@ app.post('/crawl', async (req, res) => {
     }
 });
 
-// Route pour obtenir l'historique des pages
 app.get('/pages', async (req, res) => {
     try {
         const pages = await Page.find()
@@ -182,7 +165,6 @@ app.get('/pages', async (req, res) => {
     }
 });
 
-// Route pour télécharger un fichier
 app.get('/download/:filename', (req, res) => {
     const filename = req.params.filename;
     const filePath = path.join(__dirname, 'downloads', filename);
@@ -194,7 +176,6 @@ app.get('/download/:filename', (req, res) => {
     });
 });
 
-// Route pour la page d'accueil
 app.get('/', (req, res) => {
     console.log('Accès à la page d\'accueil');
     const indexPath = path.join(__dirname, 'public', 'index.html');
@@ -207,19 +188,16 @@ app.get('/', (req, res) => {
     });
 });
 
-// Démarrage du serveur
 const server = app.listen(port, '0.0.0.0', () => {
     console.log(`Serveur démarré sur http://0.0.0.0:${port}`);
     console.log('Dossier public:', path.join(__dirname, 'public'));
     console.log('Dossier downloads:', path.join(__dirname, 'downloads'));
 });
 
-// Gestion des erreurs du serveur
 server.on('error', (error) => {
     console.error('Erreur du serveur:', error);
 });
 
-// Gestion des connexions
 server.on('connection', (socket) => {
     console.log('Nouvelle connexion:', socket.remoteAddress);
 }); 

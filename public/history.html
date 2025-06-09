@@ -3,110 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Historique - Crawler Web</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f5f6fa;
-            margin: 0;
-            padding: 0;
-        }
-        .container {
-            max-width: 600px;
-            margin: 40px auto;
-            background: #fff;
-            border-radius: 10px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.07);
-            padding: 32px 24px 24px 24px;
-        }
-        h1 {
-            text-align: center;
-            color: #222;
-            margin-bottom: 32px;
-        }
-        ul.url-list {
-            list-style: none;
-            padding: 0;
-        }
-        ul.url-list li {
-            margin: 12px 0;
-            padding: 12px 10px;
-            background: #f7f7f7;
-            border-radius: 5px;
-            transition: background 0.2s;
-        }
-        ul.url-list li:hover {
-            background: #e6f7ff;
-        }
-        .url-link {
-            color: #007bff;
-            text-decoration: none;
-            font-size: 1.05em;
-            word-break: break-all;
-        }
-        .date {
-            color: #888;
-            font-size: 0.95em;
-            margin-left: 10px;
-        }
-        .navigation {
-            margin-top: 30px;
-            text-align: center;
-        }
-        .button {
-            display: inline-block;
-            padding: 10px 20px;
-            background-color: #28a745;
-            color: white;
-            text-decoration: none;
-            border-radius: 4px;
-            font-size: 1em;
-        }
-        .button:hover {
-            background-color: #218838;
-        }
-        .empty-message {
-            text-align: center;
-            color: #888;
-            margin: 40px 0 20px 0;
-            font-size: 1.1em;
-        }
-    </style>
+    <title>Historique - Web Crawler</title>
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
     <div class="container">
-        <h1>Historique des URLs crawlées</h1>
-        <ul id="url-list" class="url-list">
-            <li class="empty-message">Chargement...</li>
-        </ul>
+        <h1>Historique des pages crawlees</h1>
+        <div class="search-container">
+            <input type="text" id="search" placeholder="Rechercher...">
+        </div>
+        <div class="table-container">
+            <table id="history-table">
+                <thead>
+                    <tr>
+                        <th>URL</th>
+                        <th>Titre</th>
+                        <th>Description</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
         <div class="navigation">
-            <a href="/" class="button">Retour à l'accueil</a>
+            <a href="index.html" class="button">Retour à l'accueil</a>
         </div>
     </div>
-    <script>
-        const urlList = document.getElementById('url-list');
-        function formatDate(date) {
-            return new Date(date).toLocaleString();
-        }
-        async function loadHistory() {
-            try {
-                const response = await fetch('/pages');
-                const pages = await response.json();
-                urlList.innerHTML = '';
-                if (!pages.length) {
-                    urlList.innerHTML = '<li class="empty-message">Aucune URL crawlée pour le moment.</li>';
-                    return;
-                }
-                pages.forEach(page => {
-                    const li = document.createElement('li');
-                    li.innerHTML = `<a href="${page.url}" class="url-link" target="_blank">${page.url}</a><span class="date">(${formatDate(page.crawledAt)})</span>`;
-                    urlList.appendChild(li);
-                });
-            } catch (error) {
-                urlList.innerHTML = `<li class="empty-message">Erreur lors du chargement de l'historique</li>`;
-            }
-        }
-        loadHistory();
-    </script>
+    <script src="js/history.js"></script>
 </body>
 </html> 
